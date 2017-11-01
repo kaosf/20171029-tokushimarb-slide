@@ -1,0 +1,445 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+ "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta http-equiv="Content-Style-Type" content="text/css" />
+  <meta name="generator" content="pandoc" />
+  <meta name="author" content="ka" />
+  <meta name="date" content="2017-10-29" />
+  <title>今更RailsのテストをDockerで</title>
+  <style type="text/css">code{white-space: pre;}</style>
+  <style type="text/css">
+div.sourceCode { overflow-x: auto; }
+table.sourceCode, tr.sourceCode, td.lineNumbers, td.sourceCode {
+  margin: 0; padding: 0; vertical-align: baseline; border: none; }
+table.sourceCode { width: 100%; line-height: 100%; }
+td.lineNumbers { text-align: right; padding-right: 4px; padding-left: 4px; color: #aaaaaa; border-right: 1px solid #aaaaaa; }
+td.sourceCode { padding-left: 5px; }
+code > span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code > span.dt { color: #902000; } /* DataType */
+code > span.dv { color: #40a070; } /* DecVal */
+code > span.bn { color: #40a070; } /* BaseN */
+code > span.fl { color: #40a070; } /* Float */
+code > span.ch { color: #4070a0; } /* Char */
+code > span.st { color: #4070a0; } /* String */
+code > span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code > span.ot { color: #007020; } /* Other */
+code > span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code > span.fu { color: #06287e; } /* Function */
+code > span.er { color: #ff0000; font-weight: bold; } /* Error */
+code > span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+code > span.cn { color: #880000; } /* Constant */
+code > span.sc { color: #4070a0; } /* SpecialChar */
+code > span.vs { color: #4070a0; } /* VerbatimString */
+code > span.ss { color: #bb6688; } /* SpecialString */
+code > span.im { } /* Import */
+code > span.va { color: #19177c; } /* Variable */
+code > span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code > span.op { color: #666666; } /* Operator */
+code > span.bu { } /* BuiltIn */
+code > span.ex { } /* Extension */
+code > span.pp { color: #bc7a00; } /* Preprocessor */
+code > span.at { color: #7d9029; } /* Attribute */
+code > span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code > span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code > span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+  </style>
+  <link rel="stylesheet" type="text/css" media="screen, projection, print"
+    href="https://www.w3.org/Talks/Tools/Slidy2/styles/slidy.css" />
+  <script src="https://www.w3.org/Talks/Tools/Slidy2/scripts/slidy.js"
+    charset="utf-8" type="text/javascript"></script>
+</head>
+<body>
+<div class="slide titlepage">
+  <h1 class="title">今更RailsのテストをDockerで</h1>
+  <p class="author">
+ka
+  </p>
+  <p class="date">2017-10-29</p>
+</div>
+<div id="author" class="slide section level1">
+<h1>Author</h1>
+<p>ka</p>
+<p><a href="https://gravatar.com/ka000"><img src="https://gravatar.com/avatar/884be098693425b409d25aaec5091de8?s=150" alt="Gravatar" /></a></p>
+<p>Website: <a href="http://www.kaosfield.net">kaosfield</a></p>
+<p>Twitter: <a href="https://twitter.com/ka_">ka</a></p>
+<p>GitHub: <a href="https://github.com/kaosf">kaosf</a></p>
+</div>
+<div id="license" class="slide section level1">
+<h1>License</h1>
+<p><a href="http://creativecommons.org/licenses/by-nc-sa/4.0/"><img src="https://licensebuttons.net/l/by-nc-sa/4.0/88x31.png" alt="CC BY-NC-SA 4.0" /></a></p>
+<p>Copyright (C) 2017 ka</p>
+</div>
+<div id="このページとリポジトリ" class="slide section level1">
+<h1>このページとリポジトリ</h1>
+<p><a href="https://kaosf.github.io/20171029-tokushimarb-slide" class="uri">https://kaosf.github.io/20171029-tokushimarb-slide</a></p>
+<p>Repository: <a href="https://github.com/kaosf/20171029-tokushimarb-slide">kaosf/20171029-tokushimarb-slide - GitHub</a></p>
+</div>
+<div id="内容" class="slide section level1">
+<h1>内容</h1>
+<ul>
+<li>
+Jenkins 7割
+</li>
+<li>
+Docker 3割
+</li>
+</ul>
+<p>Dockerの方にコマンド色々書いてありますが</p>
+<p>実験 → スライド修正 → 実験方法修正 → …</p>
+<p>などとひたすら繰り返していたのでミスがある可能性が高いです…</p>
+<p>100%を目指す前にまずはアップしたのであしからず…(明らかなミスとかありましたらIssueを投稿して下さればありがたいです)</p>
+</div>
+<div id="jenkins-multibranch-pipeline" class="slide section level1">
+<h1>Jenkins Multibranch Pipeline</h1>
+<p>Jenkinsで新規にジョブを作る際に選択できる候補の一つ</p>
+<p>※正確にはジョブではなくアイテムかも</p>
+<p>リポジトリに存在するJenkinsfileに反応してブランチごとにジョブを分けて作ってくれる</p>
+<p>※Jenkinsfileというファイル名は任意に指定可能だが変える意味は無いと思う</p>
+<p><img src="jenkins-multibranch-pipeline.png" height="300"></p>
+</div>
+<div id="設定項目" class="slide section level1">
+<h1>設定項目</h1>
+<p>GitリポジトリのURL</p>
+<pre><code>git@bitbucket.org:owner/repos.git</code></pre>
+<p>などを1つ設定するだけ</p>
+</div>
+<div id="section" class="slide section level1">
+<h1></h1>
+<p><img src="jenkins-multibranch-pipeline-configure.png" height="500"></p>
+</div>
+<div id="section-1" class="slide section level1">
+<h1></h1>
+<p>必要最小限感が良い</p>
+<p>他にも色々設定出来ることはあるがGUIでポチポチやりたくない</p>
+<p>設定を保存するとリポジトリをスキャンし始める(既にJenkinsfileがあればビルドを始める)</p>
+</div>
+<div id="それ以前の初期設定" class="slide section level1">
+<h1>それ以前の初期設定</h1>
+<p>Jenkinsユーザで秘密鍵と公開鍵のペアを作っておく必要がある</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">sudo</span> su - jenkins
+
+<span class="fu">ssh-keygen</span>
+
+<span class="fu">cat</span> ~/.ssh/id_rsa.pub</code></pre></div>
+<p>ここで得られた公開鍵をGitHubやBitbucketのリポジトリごとの設定に存在する場所に設定する</p>
+<p>※BitbucketならAccess keyに登録 等</p>
+<p>もしくは何か別の方法で認証をクリアするとか…あまり色々な方法は知らない(それをまとめた発表聞きたい)</p>
+</div>
+<div id="section-2" class="slide section level1">
+<h1></h1>
+<p>あと初回接続時は</p>
+<pre><code>~/.ssh/known_hosts</code></pre>
+<p>にGitHub等のサーバ自体の公開鍵？(この辺原理をよく知らない)を登録するかどうかみたいなの聞かれるので一度だけ手動で</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">git</span> clone git@bitbucket.org:owner/repos.git</code></pre></div>
+<p>しておいてプロンプトに yes と答えておく必要があったかもしれない</p>
+</div>
+<div id="section-3" class="slide section level1">
+<h1></h1>
+<p>もしくは</p>
+<pre><code>~/.ssh/config</code></pre>
+<p>に</p>
+<pre><code>host github.com
+  StrictHostKeyChecking no
+host bitbucket.org
+  StrictHostKeyChecking no</code></pre>
+<p>と設定してやれば大丈夫だった気がする</p>
+</div>
+<div id="section-4" class="slide section level1">
+<h1></h1>
+<p>この辺も含めてフルオートにしたいですね</p>
+<p>Jenkinsサーバのprovisioningするときに頑張れば出来ますが私はまだやってません</p>
+<p>そのうちItamaeのコードスニペットでも雑に作ってGist辺りに保存しておくかも</p>
+</div>
+<div id="連携設定" class="slide section level1">
+<h1>連携設定</h1>
+<p>Jenkinsのビルドを外部から起動する方法は設定の <strong>Trigger builds remotely</strong> を有効にして推測不能なtokenを設定し外部から</p>
+<pre><code>http://JENKINS_HOST/buildByToken/build?job=JOBNAME&amp;token=TOKEN</code></pre>
+<p>にGETリクエストを飛ばしてやることだった</p>
+<p>これで普通のジョブは出来ていた(他にも方法はある)</p>
+</div>
+<div id="section-5" class="slide section level1">
+<h1></h1>
+<p>Multibranch Pipelineの設定画面にはそういうのが無い</p>
+<p>デフォルトで <strong>Poll SCM</strong> になっていると思われる</p>
+<p>なので出すべきGETリクエストは以下のようなものになる</p>
+<pre><code>http://JENKINS_HOST/git/notifyCommit?url=git@bitbucket.org:owner/repos.git</code></pre>
+<p>これで勝手に更新のあったブランチを検出して動いてくれる</p>
+</div>
+<div id="jenkinsfileの書き方" class="slide section level1">
+<h1>Jenkinsfileの書き方</h1>
+<p>Scriptedな書き方とDeclarativeな書き方がある</p>
+<p>Declarativeな書き方のほうが後から出来るようになったので世の中に散らばっているサンプルはScriptedの方が多いので困る</p>
+<p>おおよそ次のようになる</p>
+</div>
+<div id="section-6" class="slide section level1">
+<h1></h1>
+<pre class="groovy"><code>#!groovy
+
+pipeline {
+    agent any
+
+    stages {
+        stage(&#39;Build&#39;) {
+            steps {
+                sh &#39;echo &quot;build&quot;&#39;
+            }
+        }
+        stage(&#39;Test&#39;) {
+            steps { sh &#39;echo &quot;test&quot;&#39; }
+            post {
+                always { sh &#39;echo &quot;finish&quot;&#39; }
+                success { sh &#39;echo &quot;success&quot;&#39; }
+                failure { sh &#39;echo &quot;failure&quot;&#39; }
+            }
+        }
+        stage(&#39;Deploy&#39;) {
+            when {
+                branch &#39;release&#39;
+            }
+            steps { sh &#39;echo &quot;deploy&quot;&#39; }
+        }
+    }
+}</code></pre>
+</div>
+<div id="関数説明" class="slide section level1">
+<h1>関数説明</h1>
+<pre><code>sh &#39;command&#39;</code></pre>
+<p>任意のシェルスクリプトが実行出来る</p>
+<p>これで基本的には自由になれる</p>
+</div>
+<div id="関数紹介" class="slide section level1">
+<h1>関数紹介</h1>
+<pre><code>archiveArtifaces</code></pre>
+<p>アーカイブが作れる</p>
+<h2 id="使い方">使い方</h2>
+<pre><code>archiveArtifaces artifacts: &#39;path/to/flie&#39;, fingerprint: true</code></pre>
+</div>
+<div id="関数紹介-1" class="slide section level1">
+<h1>関数紹介</h1>
+<pre><code>withCredentials</code></pre>
+<p>秘密の文字列をログから隠せる</p>
+</div>
+<div id="section-7" class="slide section level1">
+<h1></h1>
+<h2 id="withcredentialsの使い方">withCredentialsの使い方</h2>
+<p>KeyName というキーでSecret textを設定している場合</p>
+<pre class="groovy"><code>withCredentials([string(credentialsId: &#39;KeyName&#39;, variable: &#39;token&#39;)]) {
+    sh &quot;echo $token&quot;
+}</code></pre>
+<p>Groovyの通常の変数展開とは違う点に注意</p>
+<pre class="groovy"><code>&quot;This is ${x}.&quot; // 通常
+&quot;This is $token // ${} ではなく $ だけにする</code></pre>
+</div>
+<div id="section-8" class="slide section level1">
+<h1></h1>
+<p>これで今までJenkinsの管轄下にあったジョブの設定がリポジトリ内のテキストファイルとして管理できるようになった</p>
+<p>一般のCIサービスのようになってうれしい(TravisCIとか)</p>
+</div>
+<div id="jenkinsの便利plugin紹介" class="slide section level1">
+<h1>Jenkinsの便利Plugin紹介</h1>
+<p>便利と言うか必須になってしまったプラグイン</p>
+<p><strong>Role-based Authorization Strategy</strong></p>
+<p>ジョブごとに権限を設定出来る</p>
+<p>これが無いともう無理</p>
+<p>正規表現を使って複数のジョブにまとめて同じ設定を適用することも出来る</p>
+</div>
+<div id="multibranchじゃないpipelie" class="slide section level1">
+<h1>MultibranchじゃないPipelie</h1>
+<p>別にブランチごとに反応しなくてもmasterだけでいい…</p>
+<p>と思っていて普通のPipelineというものもあるのでそれを最初調べていた</p>
+<p>がmasterだろうが何だろうがおかまいなく反応してしまった</p>
+<p>処理を分岐しようと色々試したが上手く行かなかったので使うのをやめた</p>
+</div>
+<div id="未調査" class="slide section level1">
+<h1>未調査</h1>
+<p>コミットコメントに</p>
+<pre><code>[ci skip]</code></pre>
+<p>が含まれていればstageを全て飛ばして成功扱いにするというのをやりたいがやり方不明</p>
+</div>
+<div id="docker準備" class="slide section level1">
+<h1>Docker準備</h1>
+<p>Dockerのインストールは一度インストールに成功したコマンドを控えたりせずに常に公式のガイドを参考にしよう(戒め)</p>
+<p>今はこれ</p>
+<p><a href="https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu" class="uri">https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu</a></p>
+<p>Docker CEとDocker EEに分裂したがCE (Community Edition)の方を使えば良い</p>
+</div>
+<div id="section-9" class="slide section level1">
+<h1></h1>
+<p>Linux Ubuntu 16.04 amd64の場合(現状)</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">sudo</span> apt-get update
+<span class="fu">sudo</span> apt-get install apt-transport-https ca-certificates curl software-properties-common
+<span class="ex">curl</span> -fsSL https://download.docker.com/linux/ubuntu/gpg <span class="kw">|</span> <span class="fu">sudo</span> apt-key add -
+<span class="fu">sudo</span> add-apt-repository \
+  <span class="st">&quot;deb [arch=amd64] https://download.docker.com/linux/ubuntu </span><span class="va">$(</span><span class="ex">lsb_release</span> -cs<span class="va">)</span><span class="st"> stable&quot;</span>
+<span class="fu">sudo</span> apt-get update
+<span class="fu">sudo</span> apt-get install docker-ce</code></pre></div>
+</div>
+<div id="sudo無しでもいいように" class="slide section level1">
+<h1>sudo無しでもいいように</h1>
+<p>jenkinsユーザがsudoなしでもdockerコマンドが叩けるようにsudo出来るユーザで以下を実行しておく</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">sudo</span> gpasswd -a jenkins docker</code></pre></div>
+<p>この後JenkinsなりOSなり再起動する必要があったような気がする</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">sudo</span> systemctl restart jenkins.service <span class="co"># ?</span>
+<span class="co"># or</span>
+<span class="fu">sudo</span> shutdown -r now <span class="co"># ?</span></code></pre></div>
+</div>
+<div id="docker-compose" class="slide section level1">
+<h1>docker-compose</h1>
+<p>ここを参考に</p>
+<p><a href="https://docs.docker.com/compose/install/#install-compose" class="uri">https://docs.docker.com/compose/install/#install-compose</a></p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="fu">sudo</span> curl -L https://github.com/docker/compose/releases/download/1.16.1/docker-compose-<span class="kw">`</span><span class="fu">uname</span> -s<span class="kw">`</span>-<span class="kw">`</span><span class="fu">uname</span> -m<span class="kw">`</span> -o /usr/local/bin/docker-compose
+<span class="fu">sudo</span> chmod +x /usr/local/bin/docker-compose</code></pre></div>
+</div>
+<div id="linkオプションの代わり" class="slide section level1">
+<h1>--linkオプションの代わり</h1>
+<p>コンテナ同士で連携するための--linkオプションが非推奨になっていたのでnetworkを作ってそれを使う</p>
+<p>次のページで例示</p>
+</div>
+<div id="section-10" class="slide section level1">
+<h1></h1>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> network create mynetwork
+
+<span class="ex">docker</span> run -d --rm --net mynetwork --name mydb postgres:9.6
+<span class="fu">git</span> clone https://github.com/kaosf/20171029-tokushimarb-rails
+<span class="bu">cd</span> 20171029-tokushimarb-rails
+<span class="ex">docker</span> run -t --rm --net mynetwork -e DATABASE_URL=postgres://postgres:@mydb:5432/a \
+  -v <span class="va">$PWD</span>:/app -w /app ruby:2.4.2 /bin/bash -c \
+<span class="st">&quot;bundle install --path vendor/bundle --without development production &amp;&amp;</span>
+<span class="st">RAILS_ENV=test bin/rails db:setup &amp;&amp;</span>
+<span class="st">RAILS_ENV=test bin/rake&quot;</span></code></pre></div>
+<p>これでrubyのコンテナからはホスト名 mydb でpostgresのコンテナを参照出来る</p>
+<p>DBの名前は所詮作り捨てにするので超適当に a としている</p>
+<p>環境変数DATABASE_URLを使えるようにconfig/database.ymlを改造しておくと良い</p>
+</div>
+<div id="後始末" class="slide section level1">
+<h1>後始末</h1>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> stop mydb
+<span class="ex">docker</span> network rm mynetwork</code></pre></div>
+<p>mydbの方は--rmオプションを付けていたので止めれば消える</p>
+</div>
+<div id="docker-composeを使う" class="slide section level1">
+<h1>docker-composeを使う</h1>
+<pre><code>docker-compose.yml</code></pre>
+<p>というファイル名で次のようなファイルを用意(リポジトリのルートに)</p>
+</div>
+<div id="section-11" class="slide section level1">
+<h1></h1>
+<div class="sourceCode"><pre class="sourceCode yml"><code class="sourceCode yaml"><span class="fu">version:</span><span class="at"> </span><span class="st">&#39;3&#39;</span>
+<span class="fu">services:</span>
+  <span class="fu">db:</span>
+    <span class="fu">image:</span><span class="at"> postgres:9.6</span>
+  <span class="fu">test:</span>
+    <span class="fu">image:</span><span class="at"> ruby:2.4.2</span>
+    <span class="fu">volumes:</span>
+      <span class="kw">-</span> <span class="fu">./:</span><span class="at">/app</span>
+    <span class="fu">environment:</span>
+      <span class="fu">DATABASE_URL:</span><span class="at"> postgres://postgres:@db:5432/a</span>
+    <span class="fu">working_dir:</span><span class="at"> /app</span>
+    <span class="fu">depends_on:</span>
+      <span class="kw">-</span> db
+    <span class="fu">command:</span><span class="at"> |-</span>
+      /bin/bash -c \
+      <span class="st">&quot;sleep 1</span>
+<span class="st">      bundle install --path vendor/bundle --without development production &amp;&amp;</span>
+<span class="st">      RAILS_ENV=test bin/rails db:setup &amp;&amp;</span>
+<span class="st">      RAILS_ENV=test bin/rake&quot;</span></code></pre></div>
+</div>
+<div id="若干の注意" class="slide section level1">
+<h1>若干の注意</h1>
+<p>docker-composeを使わない方の例では <strong>mydb</strong> だったものを <strong>db</strong> に変更している</p>
+<p>※3行目のdbをmydbに変えてDATABASE_URLも変えれば同じになる</p>
+</div>
+<div id="sleepの謎" class="slide section level1">
+<h1>sleepの謎</h1>
+<p>何故か</p>
+<pre><code>sleep 1</code></pre>
+<p>を挟まないとDBへの接続で失敗する…</p>
+<p>これが謎</p>
+</div>
+<div id="動かし方" class="slide section level1">
+<h1>動かし方</h1>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker-compose</span> run test</code></pre></div>
+</div>
+<div id="後始末-1" class="slide section level1">
+<h1>後始末</h1>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker-compose</span> stop
+<span class="ex">docker-compose</span> rm -f</code></pre></div>
+</div>
+<div id="未調査-1" class="slide section level1">
+<h1>未調査</h1>
+<p>ネットワークがdockercompose_defaultになってしまい同時に起動したときにエラーになるかも</p>
+</div>
+<div id="therubyracerを使うようにしておく" class="slide section level1">
+<h1>therubyracerを使うようにしておく</h1>
+<p>Railsのデフォルト状態で行こうとするとJavaScriptのランタイムがありませんというエラーに遭遇するはず</p>
+<p>Gemfileでtherubyracerがコメントアウトされていると思うので有効にしておくと良い</p>
+</div>
+<div id="ガチでdockerのイメージを固定する方法" class="slide section level1">
+<h1>ガチでDockerのイメージを固定する方法</h1>
+<p>※jqコマンドをインストールしなくてもJSONを読み解けばいいです</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> inspect user/container <span class="kw">|</span> <span class="ex">jq</span> <span class="st">&#39;.[0].RepoDigests[0]&#39;</span></code></pre></div>
+<p>これで出てくる文字列</p>
+<pre><code>user/container@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</code></pre>
+<p>を指定してpullすればいい</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> pull user/container@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef</code></pre></div>
+</div>
+<div id="section-12" class="slide section level1">
+<h1></h1>
+<p>ただしタグが付かないので自分で適当に付ければよい</p>
+<p>そのためにはイメージIDを知っておく必要がある(docker imagesコマンドで分かる)</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> images <span class="co"># 調べる</span>
+<span class="ex">docker</span> tag user/container:myfixedversion1 0123456789ab</code></pre></div>
+<p>後は普通に使えば良い</p>
+<p>例:</p>
+<div class="sourceCode"><pre class="sourceCode sh"><code class="sourceCode bash"><span class="ex">docker</span> run --rm -it user/container:myfixedversion1 /bin/bash</code></pre></div>
+</div>
+<div id="tips" class="slide section level1">
+<h1>Tips</h1>
+<p>手軽に一意な文字列が欲しい場合</p>
+<pre><code>cat /proc/sys/kernel/random/uuid</code></pre>
+<p>これでUUIDが得られるので簡単</p>
+<p>uuidgenコマンドは無い環境もあった</p>
+<p>上手いことネットワーク名やDB名を被らないようにするのに使えそう</p>
+</div>
+<div id="参考" class="slide section level1">
+<h1>参考</h1>
+<ul>
+<li>
+<a href="https://docs.docker.com/compose/" class="uri">https://docs.docker.com/compose/</a>
+</li>
+</ul>
+<h2 id="コンテナ同士の連携---linkの代替">コンテナ同士の連携 (--linkの代替)</h2>
+<ul>
+<li>
+<a href="https://qiita.com/tamanobi/items/8b8dd64ae1f959f9ff9f" class="uri">https://qiita.com/tamanobi/items/8b8dd64ae1f959f9ff9f</a>
+</li>
+<li>
+<a href="https://scrapbox.io/odiak/docker_%E3%81%AE_--link_%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%AE%E4%BB%A3%E3%82%8F%E3%82%8A">https://scrapbox.io/odiak/docker_%E3%81%AE_--link_%E3%82%AA%E3%83%97%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%AE%E4%BB%A3%E3%82%8F%E3%82%8A</a>
+</li>
+</ul>
+<h2 id="イメージのdigestを指定してのpull">イメージのdigestを指定してのpull</h2>
+<ul>
+<li>
+<a href="https://stackoverflow.com/questions/25445318/docker-how-do-i-pull-a-specific-build-id" class="uri">https://stackoverflow.com/questions/25445318/docker-how-do-i-pull-a-specific-build-id</a>
+</li>
+<li>
+<a href="https://docs.docker.com/engine/reference/commandline/pull/#pull-a-repository-with-multiple-images" class="uri">https://docs.docker.com/engine/reference/commandline/pull/#pull-a-repository-with-multiple-images</a>
+</li>
+</ul>
+</div>
+</body>
+</html>
+<!-- Pandoc version:
+pandoc 1.19.2.1
+Compiled with pandoc-types 1.17.2, texmath 0.9.4.4, skylighting 0.1.1.5
+Default user data directory: <DELETED>
+Copyright (C) 2006-2016 John MacFarlane
+Web:  http://pandoc.org
+This is free software; see the source for copying conditions.
+There is no warranty, not even for merchantability or fitness
+for a particular purpose.
+-->
