@@ -354,10 +354,10 @@ sudo chmod +x /usr/local/bin/docker-compose
 ```sh
 docker network create mynetwork
 
-docker run -d --rm --net mynetwork --name mydb postgres:9.6
+docker run -d --rm --network mynetwork --name mydb postgres:9.6
 git clone https://github.com/kaosf/20171029-tokushimarb-rails
 cd 20171029-tokushimarb-rails
-docker run -t --rm --net mynetwork -e DATABASE_URL=postgres://postgres:@mydb:5432/a \
+docker run -t --rm --network mynetwork -e DATABASE_URL=postgres://postgres:@mydb:5432/a \
   -v $PWD:/app -w /app ruby:2.4.2 /bin/bash -c \
 "bundle install --path vendor/bundle --without development production &&
 RAILS_ENV=test bin/rails db:setup &&
